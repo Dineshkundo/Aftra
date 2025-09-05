@@ -121,7 +121,7 @@ pipeline {
                         sh """
                             chmod 755 gradlew
                             ./gradlew sonarqube \
-                                -Dsonar.host.url=http://172.208.97.243:9000 \
+                                -Dsonar.host.url=http://342.708.97.243:9000 \
                                 -Dsonar.login=######################
                         """
                     }
