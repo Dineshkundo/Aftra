@@ -1,0 +1,77 @@
+sudo vim /etc/nginx/sites-available/sonarqube
+ 
+server {
+    listen 80;
+    server_name sonar.afmsagaftrafund.org;
+ 
+    # Redirect HTTP to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+ 
+server {
+    listen 443 ssl;
+    server_name sonar.afmsagaftrafund.org;
+ 
+    ssl_certificate /etc/nginx/ssl/jenkins.crt;
+    ssl_certificate_key /etc/nginx/ssl/jenkins.key;
+    ssl_trusted_certificate /etc/nginx/ssl/ca_bundle.crt;
+ 
+    location / {
+        proxy_pass http://10.0.1.11:9000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+ 
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+ 
+sudo ln -s /etc/nginx/sites-available/sonarqube /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
+ 
+--------------------------------------------------
+sudo vim /etc/nginx/sites-available/prometheus
+ 
+server {
+    listen 80;
+    server_name prometheus.afmsagaftrafund.org;
+ 
+    # Redirect HTTP to HTTPS
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+ 
+server {
+    listen 443 ssl;
+    server_name prometheus.afmsagaftrafund.org;
+ 
+    ssl_certificate /etc/nginx/ssl/jenkins.crt;
+    ssl_certificate_key /etc/nginx/ssl/jenkins.key;
+    ssl_trusted_certificate /etc/nginx/ssl/ca_bundle.crt;
+ 
+    location / {
+        proxy_pass http://10.0.2.2:9090;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+ 
+        # WebSocket support
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+ 
+ 
+sudo ln -s /etc/nginx/sites-available/prometheus /etc/nginx/sites-enabled/
+sudo nginx -t
+sudo systemctl reload nginx
