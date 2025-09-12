@@ -1,0 +1,248 @@
+@Library('shared-lib') _
+
+def buildUser = 'Unknown'
+
+def branchMap = [:]
+def yamlMap = [:]
+def clusterMap = [:]
+def propertyMap = [:]
+def currentBranch = ''
+def currentProperty = ''
+def currentYaml = ''
+def currentCluster = ''
+def imageTag = ''
+
+pipeline {
+    agent any
+
+    tools {
+        gradle 'Gradle'
+    }
+
+    options {
+        buildDiscarder(logRotator(daysToKeepStr: '60'))
+    }
+	
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['Dev', 'QA', 'UAT'])
+        choice(name: 'SERVICE_NAME', choices: ['fileingestionservice', 'searchservice', 'securityservice', 'playlistandtitlemanagement', 'serviceregistry', 'participantservice', 'cacheservice', 'cloudgateway', 'documentmanagementservice', 'internationservice', 'mailservice', 'netsuiteintegrationservices'])
+        booleanParam(
+            name: 'RUN_SONAR',
+            defaultValue: true,
+            description: 'Run SonarQube Scan?'
+        )
+    }
+	
+	environment {
+        USERNAME = credentials('ACRUSERNAME')
+        PASSWD = credentials('ACRPASSWD')
+        RESOURCE_GROUP = 'CODA_RG'
+    }
+
+    stages {
+        stage('Init') {
+            steps {
+                script {
+                    wrap([$class: 'BuildUser']) {
+                        buildUser = env.BUILD_USER ?: 'Unknown'
+                    }
+
+                    branchMap = [
+                        Dev: 'DEV', QA: 'QA', UAT: 'release/UAT'
+                    ]
+                    yamlMap = [
+                        Dev: "${params.SERVICE_NAME}-dev-deployment.yml",
+                        QA: "${params.SERVICE_NAME}-qa-deployment.yml",
+                        UAT: "${params.SERVICE_NAME}-uat-deployment.yml"
+                    ]
+                    clusterMap = [
+                        Dev: 'DevFundCluster',
+                        QA: 'DevFundCluster',
+                        UAT: 'CODAUATCluster'
+                    ]
+                    propertyMap = [
+                        Dev: 'dev',
+                        QA: 'qa',
+                        UAT: 'uat'
+                    ]	
+                    
+                    def config = backendConfig(env: params.ENVIRONMENT, svc: params.SERVICE_NAME)
+
+                    currentBranch = branchMap[params.ENVIRONMENT]
+                    currentYaml = yamlMap[params.ENVIRONMENT]
+                    currentCluster = clusterMap[params.ENVIRONMENT]
+					currentProperty = propertyMap[params.ENVIRONMENT]
+                    imageTag = "${params.SERVICE_NAME}-${params.ENVIRONMENT}-${env.BUILD_NUMBER}"
+					currentKeyVault = config.currentKeyVault
+					gradleFile      = config.gradleFile
+					appPropsFile    = config.appPropsFile
+					gradleenvFile   = config.gradleenvFile
+					appenvPropsFile = config.appenvPropsFile
+
+
+                    echo """
+                    ==============================================================
+                             BACKEND CONFIG DETAILS:
+                    --------------------------------------------------------------
+                            ✅ Service Name         : ${params.SERVICE_NAME}
+                            🌍 Environment          : ${params.ENVIRONMENT}
+							🌍 PropertyEnvironment  : ${currentProperty}
+                            🌿 Git Branch           : ${currentBranch}
+                            ☸️ AKS Cluster          : ${currentCluster}
+                            📄 Deployment YAML      : ${currentYaml}
+                            🐳 Docker Image Tag     : ${imageTag}
+                    ==============================================================
+                    """
+                }
+            }
+        }
+		
+        stage('Checkout Code') {
+            steps {
+                cleanWs()
+                script {
+                    echo "Checking out source code from branch '${currentBranch}' for service '${params.SERVICE_NAME}'...!"
+                    git branch: currentBranch,
+                        credentialsId: 'b8e7dce4-8ee0-4a83-b21f-a7f7ccfb20f2',
+                        url: "https://vbboya@bitbucket.org/asaiprdf/${params.SERVICE_NAME}.git"
+                }
+            }
+        }
+
+        stage('Inject Secrets') {
+            steps {
+                script {
+                    injectSecrets(
+                        currentKeyVault: currentKeyVault,
+                        gradleFile: gradleFile,
+                        gradleenvFile: gradleenvFile,
+                        appPropsFile: appPropsFile,
+                        appenvPropsFile: appenvPropsFile
+                    )
+                }
+            }
+        }
+        stage('Build Service') {
+            steps {
+                script {
+                    sh "gradle wrapper -Penv=${currentProperty}"
+                    sh "sudo chmod 755 gradlew"
+                    sh "./gradlew clean build --no-daemon -Penv=${currentProperty}"
+                }
+            }
+        }
+		
+		stage('SonarQube Scan') {
+		    when {
+                expression { return params.RUN_SONAR }
+            }
+            steps {
+                withSonarQubeEnv('Sonarqube') {
+                    withCredentials([string(credentialsId: 'SONAR', variable: 'SONAR')]) {
+                        sh """
+                            chmod 755 gradlew
+                            ./gradlew sonarqube \
+                                -Dsonar.host.url=http://10.0.1.11:9000 \
+                                -Dsonar.login=$SONAR
+                        """
+                    }
+                }
+            }
+        }
+
+        stage('Notify for Approval') {
+            when {
+                expression { params.ENVIRONMENT == 'QA' || params.ENVIRONMENT == 'UAT' }
+            }
+            steps {
+                script {
+                    notifyTeam(
+                        env: params.ENVIRONMENT,
+                        serviceName: params.SERVICE_NAME,
+                        buildNumber: env.BUILD_NUMBER,
+                        buildUrl: env.BUILD_URL,
+                        type: 'approval',
+                        triggeredBy: buildUser
+                    )
+
+                    def approvers = ['vbboya@afmsagaftrafund.org','dkgiddaluri@afmsagaftrafund.org','vsboyina@afmsagaftrafund.org']
+                    timeout(time: 30, unit: 'MINUTES') {
+                        input(
+                            message: "🚦 Approve deployment of '${params.SERVICE_NAME}' to '${params.ENVIRONMENT}'?",
+                            ok: "Approve",
+                            submitter: approvers.join(',')
+                        )
+                    }
+                }
+            }
+        }
+
+        stage('Dockerize') {
+            steps {
+                script {
+                    // Fetch the keystore password from Key Vault
+                    def keystorePass = sh(
+                        script: "az keyvault secret show --vault-name ${currentKeyVault} --name JAVA-KEYSTORE-PASSWORD --query value -o tsv",
+                        returnStdout: true
+                    ).trim()
+
+                    sh """
+                    mkdir -p $WORKSPACE/certificate
+                    az keyvault secret show --name docker-crt --vault-name ${currentKeyVault} --query value -o tsv > $WORKSPACE/certificate/certificate.crt
+                    sudo docker build --build-arg KEYSTORE_PASS='${keystorePass}' --network=host -t codaregistry.azurecr.io/${params.SERVICE_NAME}:${imageTag} .
+                    echo $PASSWD | docker login codaregistry.azurecr.io -u $USERNAME --password-stdin
+                    sudo docker push codaregistry.azurecr.io/${params.SERVICE_NAME}:${imageTag}
+                    """
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    sh "az login --identity"
+                    sh "az aks get-credentials --name ${currentCluster} --resource-group ${RESOURCE_GROUP} --overwrite-existing"
+                    sh "sed -i 's/ENVIRONMENT-BUILD_NUMBER/${imageTag}/' ${currentYaml}"
+                    sh "kubectl apply -f ${currentYaml}"
+                }
+            }
+        }
+        stage('Notify Success') {
+            steps {
+                script {
+                    notifyTeam(
+                        env: params.ENVIRONMENT,
+                        serviceName: params.SERVICE_NAME,
+                        buildNumber: env.BUILD_NUMBER,
+                        buildUrl: env.BUILD_URL,
+                        type: 'success',
+                        triggeredBy: buildUser
+                    )
+                }
+            }
+        }
+        
+
+        stage('Clean Up') {
+            steps {
+                sh 'sudo docker system prune --all --volumes -f'
+                cleanWs()
+            }
+        }
+    } 
+	
+    post {
+        failure {
+            script {
+                notifyTeam(
+                    env: params.ENVIRONMENT,
+                    serviceName: params.SERVICE_NAME,
+                    buildNumber: env.BUILD_NUMBER,
+                    buildUrl: env.BUILD_URL,
+                    type: 'failure',
+                    triggeredBy: buildUser
+                )
+            }
+        }
+    }
+}
