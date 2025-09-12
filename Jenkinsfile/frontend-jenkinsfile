@@ -1,0 +1,265 @@
+@Library('shared-lib') _
+def buildUser = 'Unknown'
+
+def branchMap = [:]
+def yamlMap = [:]
+def clusterMap = [:]
+def currentBranch = ''
+def currentYaml = ''
+def currentCluster = ''
+def imageTag = ''
+pipeline {
+    agent any
+
+    options {
+        buildDiscarder(logRotator(daysToKeepStr: '60'))
+    }
+
+    parameters {
+        choice(
+            name: 'ENVIRONMENT',
+            choices: ['Dev', 'QA', 'UAT'],
+            description: 'Select the target environment'
+        )
+        string(
+            name: 'SERVICE_NAME',
+            defaultValue: 'codaui',
+            description: 'Name of the microservice'
+        )
+        booleanParam(
+            name: 'RUN_SONAR',
+            defaultValue: true,
+            description: 'Run SonarQube Scan?'
+        )        
+    }
+
+    environment {
+        USERNAME        = credentials('ACRUSERNAME')
+        PASSWD          = credentials('ACRPASSWD')
+        RESOURCE_GROUP  = 'CODA_RG'
+    }
+
+    stages {
+        stage('Init') {
+            steps {
+                script {
+                    wrap([$class: 'BuildUser']) {
+                        buildUser = env.BUILD_USER ?: 'Unknown'
+                    }                    
+                    branchMap = [
+                        Dev: 'CODAUIDEV',
+                        QA: 'CODAUIQA',
+                        UAT: 'CODAUIUAT'
+                    ]
+
+                    buildCmdMap = [
+                        Dev: 'npm run build:dev',
+                        QA: 'npm run build:qa',
+                        UAT: 'npm run build:stg'
+                    ]
+
+                    yamlMap = [
+                        Dev: "${params.SERVICE_NAME}-dev-deployment.yml",
+                        QA: "${params.SERVICE_NAME}-qa-deployment.yml",
+                        UAT: "${params.SERVICE_NAME}-uat-deployment.yml"
+                    ]
+
+                    clusterMap = [
+                        Dev: 'DevFundCluster',
+                        QA: 'DevFundCluster',
+                        UAT: 'CODAUATCluster'
+                    ]
+
+                    dockerfileMap = [
+                        Dev: 'Docker/Dev/Dockerfile',
+                        QA: 'Docker/QA/Dockerfile',
+                        UAT: 'Docker/UAT/Dockerfile'
+                    ]
+
+                    currentBranch      = branchMap[params.ENVIRONMENT]
+                    currentBuildCmd    = buildCmdMap[params.ENVIRONMENT]
+                    currentYaml        = yamlMap[params.ENVIRONMENT]
+                    currentCluster     = clusterMap[params.ENVIRONMENT]
+                    currentDockerfile  = dockerfileMap[params.ENVIRONMENT]
+                    imageTag           = "${params.ENVIRONMENT}-${env.BUILD_NUMBER}"
+
+                    echo "🌐 Environment set for ${params.ENVIRONMENT} (Branch: ${currentBranch}, Cluster: ${currentCluster})"
+                }
+            }
+        }
+
+        stage('Checkout Code') {
+            steps {
+                cleanWs()
+                script {
+                    echo "📦 Checking out branch: ${currentBranch}"
+                    git branch: currentBranch,
+                        credentialsId: 'bitbucket',
+                        url: 'git@bitbucket.org:asaiprdf/codaui.git'
+
+                    echo """
+    ================================================================================
+          🚀 BUILD STAGE DETAILS 🚀
+    --------------------------------------------------------------------------------
+        📂 Environment        : ${params.ENVIRONMENT}
+        🌿 Branch Checked Out : ${currentBranch}
+        🛠️  Build Command      : ${currentBuildCmd}
+        📄 Deployment YAML    : ${currentYaml}
+        ☸️  AKS Cluster        : ${currentCluster}
+        🐳 Dockerfile         : ${currentDockerfile}
+        🏷️  Docker Image Tag   : codaregistry.azurecr.io/codaui:${imageTag}
+    ================================================================================
+                    """
+                }
+            }
+        }
+
+        stage('Install Deps') {
+            steps {
+                echo "📥 Installing dependencies..."
+                sh 'npm install --legacy-peer-deps'
+                sh 'npm i env-cmd --f'
+            }
+        }
+
+        stage('Build App') {
+            steps {
+                script {
+                    echo "🏗️  Building the application..."
+                    if (currentBuildCmd) {
+                        sh currentBuildCmd
+                    } else {
+                        error("❌ No build command defined for ${params.ENVIRONMENT}")
+                    }
+                }
+            }
+        }
+
+        stage("SonarQube Scan") {
+            when {
+                expression { return params.RUN_SONAR }
+            }
+            steps {
+                withSonarQubeEnv('Sonarqube') {
+                    withCredentials([string(credentialsId: 'SONAR', variable: 'SONAR')]) {
+                        sh '''
+                            echo "📊 Running SonarQube scan for React UI..."
+                            # Run tests with coverage (ignore failure so scan still runs)
+                            npm run test -- --coverage --watchAll=false || true
+                            # Run sonar-scanner
+                            /opt/sonar-scanner/bin/sonar-scanner \
+                              -Dsonar.projectKey=codaui \
+                              -Dsonar.projectName="CODA UI React" \
+                              -Dsonar.sources=src \
+                              -Dsonar.exclusions=**/node_modules/**,**/build/**,**/dist/** \
+                              -Dsonar.javascript.lcov.reportPaths=coverage/lcov.info \
+                              -Dsonar.host.url=http://10.0.1.11:9000 \
+                              -Dsonar.login=$SONAR
+                        '''
+                    }
+                }
+            }
+        }
+
+        stage('Notify for Approval') {
+
+            when {
+                expression { params.ENVIRONMENT == 'QA' || params.ENVIRONMENT == 'UAT' }
+            }
+
+            steps {
+                script {
+                    notifyTeam(
+                        env: params.ENVIRONMENT,
+                        serviceName: params.SERVICE_NAME,
+                        buildNumber: env.BUILD_NUMBER,
+                        buildUrl: env.BUILD_URL,
+                        type: 'approval',
+                        triggeredBy: buildUser
+                    )
+
+                    def approvers = [
+                        'vbboya@afmsagaftrafund.org',
+                        'dkgiddaluri@afmsagaftrafund.org',
+                        'vsboyina@afmsagaftrafund.org'
+                    ]
+
+                    timeout(time: 30, unit: 'MINUTES') {
+                        input message: "🚦 Approve deployment of '${params.SERVICE_NAME}' to '${params.ENVIRONMENT}'?",
+                              ok: "Approve",
+                              submitter: approvers.join(',')
+                    }
+                }
+            }
+        }
+
+        stage('Dockerize') {
+            steps {
+                script {
+                    echo "🔧 Starting Docker build with Dockerfile: ${currentDockerfile}"
+                    sh "sudo docker build --no-cache --network=host -f ${currentDockerfile} -t codaregistry.azurecr.io/codaui:${imageTag} ."
+
+                    echo "🔐 Logging into ACR..."
+                    sh """
+                        echo '${PASSWD}' | sudo docker login codaregistry.azurecr.io \
+                        -u ${USERNAME} --password-stdin
+                    """
+
+                    echo "📤 Pushing image to ACR..."
+                    sh "sudo docker push codaregistry.azurecr.io/codaui:${imageTag}"
+                }
+            }
+        }
+
+        stage('Deploy') {
+            steps {
+                script {
+                    echo "🚀 Deploying to AKS cluster: ${currentCluster}"
+
+                    sh "az login --identity"
+                    sh "az aks get-credentials --name ${currentCluster} --resource-group ${RESOURCE_GROUP} --overwrite-existing"
+                    sh "sed -i 's/ENVIRONMENT-BUILD_NUMBER/${params.ENVIRONMENT}-${env.BUILD_NUMBER}/' ${currentYaml}"
+                    sh "kubectl apply -f ${currentYaml}"
+                }
+            }
+        }
+
+        stage('Notify Success') {
+            steps {
+                script {
+                    notifyTeam(
+                        env: params.ENVIRONMENT,
+                        serviceName: params.SERVICE_NAME,
+                        buildNumber: env.BUILD_NUMBER,
+                        buildUrl: env.BUILD_URL,
+                        type: 'success',
+                        triggeredBy: buildUser
+                    )
+                }
+            }
+        }
+
+        stage('Clean Up') {
+            steps {
+                echo "🧹 Cleaning up Docker resources and workspace..."
+                sh 'sudo docker system prune --all --volumes -f'
+                cleanWs()
+            }
+        }
+    }
+
+    post {
+        failure {
+            script {
+                notifyTeam(
+                    env: params.ENVIRONMENT,
+                    serviceName: params.SERVICE_NAME,
+                    buildNumber: env.BUILD_NUMBER,
+                    buildUrl: env.BUILD_URL,
+                    type: 'failure',
+                    triggeredBy: buildUser
+                )
+            }
+        }
+    }
+}
