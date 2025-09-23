@@ -1,0 +1,9 @@
+replicaCount: 1
+
+image:
+  repository: codaregistry.azurecr.io/mailservice
+  tag: "qa-BUILD_NUMBER"
+
+env:
+  springProfile: qa
+  environment: qa

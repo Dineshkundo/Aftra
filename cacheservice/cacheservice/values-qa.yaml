@@ -1,0 +1,6 @@
+replicaCount: 1
+env:
+  springProfile: qa
+  environment: qa
+image:
+  tag: "qa-BUILD_NUMBER"

@@ -1,0 +1,8 @@
+image:
+  tag: "uat-BUILD_NUMBER"
+
+env:
+  profile: uat
+  name: uat
+
+namespace: codauat

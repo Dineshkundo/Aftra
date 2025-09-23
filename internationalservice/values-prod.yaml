@@ -1,0 +1,16 @@
+namespace: codaprod
+
+image:
+  registry: codaregistry.azurecr.io
+  repository: internationalservicerepo
+  tag: "prod-BUILD_NUMBER"
+
+env:
+  springProfile: prod
+  environment: prod
+
+resources: {}   # prod keeps it open for tuning
+
+updateStrategy:
+  maxSurge: 0
+  maxUnavailable: 20%

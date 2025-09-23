@@ -1,0 +1,25 @@
+replicaCount: 1
+
+image:
+  repository: codaregistry.azurecr.io/documentmanagementservice
+  pullPolicy: Always
+  tag: "latest"   # will be overridden by env
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 512Mi
+  limits:
+    cpu: 100m
+    memory: 1Gi
+
+service:
+  type: ClusterIP
+  port: 8082
+
+deployment:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0

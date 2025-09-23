@@ -1,0 +1,42 @@
+services:
+  - name: react-webapp
+    host: qacoda.afmsagaftrafund.org
+    port: 3000
+  - name: serviceregistry
+    host: qaserviceregistry.afmsagaftrafund.org
+    port: 8761
+  - name: participantservice
+    host: qaparticipant.afmsagaftrafund.org
+    port: 8086
+  - name: docmanagement
+    host: qadocmanagement.afmsagaftrafund.org
+    port: 8082
+  - name: cacheservice
+    host: qacache.afmsagaftrafund.org
+    port: 8084
+  - name: cloudgateway
+    host: qacloudgateway.afmsagaftrafund.org
+    port: 8181
+  - name: playlistandtitlemanagement
+    host: qaplaylistandtitman.afmsagaftrafund.org
+    port: 8087
+  - name: searchservice
+    host: qasearchservice.afmsagaftrafund.org
+    port: 8088
+  - name: mailservice
+    host: qamailservice.afmsagaftrafund.org
+    port: 8089
+  - name: securityservice
+    host: qasecurityservice.afmsagaftrafund.org
+    port: 8085
+  - name: fileingestion
+    host: qafileingestion.afmsagaftrafund.org
+    port: 8083
+  - name: netsuiteintegrationservice
+    host: qanetsuiteintegration.afmsagaftrafund.org
+    port: 8081
+
+tlsSecret: wildcard-secret
+proxyBodySize: "50m"
+proxyReadTimeout: "60s"
+ingressClassName: nginx

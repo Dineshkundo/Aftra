@@ -1,0 +1,35 @@
+replicaCount: 1
+
+image:
+  repository: codaregistry.azurecr.io/mailservice
+  tag: "ENVIRONMENT-BUILD_NUMBER"
+  pullPolicy: Always
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 512Mi
+  limits:
+    cpu: 100m
+    memory: 1Gi
+
+service:
+  type: ClusterIP
+  port: 8089
+
+env:
+  springProfile: dev
+  environment: dev
+
+revisionHistoryLimit: 3
+rollingUpdate:
+  maxSurge: 1
+  maxUnavailable: 0
+
+
+
+# helm install mailservice ./mailservice -f mailservice/values-dev.yaml
+# helm install mailservice ./mailservice -f mailservice/values-qa.yaml
+# helm install mailservice ./mailservice -f mailservice/values-uat.yaml
+# helm install mailservice ./mailservice -f mailservice/values-prod.yaml
+# helm install codaui ./codaui -f codaui/values.yaml

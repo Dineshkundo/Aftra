@@ -1,0 +1,9 @@
+replicaCount: 1
+
+image:
+  repository: codaregistry.azurecr.io/mailservice
+  tag: "uat-BUILD_NUMBER"
+
+env:
+  springProfile: uat
+  environment: uat

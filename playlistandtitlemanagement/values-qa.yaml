@@ -1,0 +1,12 @@
+image:
+  tag: "qa-BUILD_NUMBER"
+
+env:
+  profile: qa
+  name: qa
+
+namespace: codaqa
+
+strategy:
+  maxSurge: 1
+  maxUnavailable: 0

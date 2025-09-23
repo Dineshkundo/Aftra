@@ -1,0 +1,22 @@
+replicaCount: 3
+
+image:
+  tag: "prod-BUILD_NUMBER"
+
+env:
+  profile: prod
+  name: prod
+
+namespace: codaprod
+
+resources:
+  requests:
+    cpu: "200m"
+    memory: "1Gi"
+  limits:
+    cpu: "500m"
+    memory: "2Gi"
+
+strategy:
+  maxSurge: 1
+  maxUnavailable: 0

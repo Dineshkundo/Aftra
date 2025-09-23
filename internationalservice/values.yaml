@@ -1,0 +1,31 @@
+replicaCount: 1
+
+image:
+  registry: codaregistry.azurecr.io
+  repository: internationalservice
+  tag: "ENVIRONMENT-BUILD_NUMBER"
+  pullPolicy: Always
+
+container:
+  name: internationalserviceapp
+  port: 8090
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 512Mi
+  limits:
+    cpu: 100m
+    memory: 1Gi
+
+service:
+  type: ClusterIP
+  port: 8090
+
+updateStrategy:
+  maxSurge: 1
+  maxUnavailable: 0
+
+env:
+  springProfile: dev
+  environment: dev

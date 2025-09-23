@@ -1,0 +1,35 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "internationalservice.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: {{ include "internationalservice.name" . }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "internationalservice.name" . }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.updateStrategy.maxSurge }}
+      maxUnavailable: {{ .Values.updateStrategy.maxUnavailable }}
+  template:
+    metadata:
+      labels:
+        app: {{ include "internationalservice.name" . }}
+    spec:
+      containers:
+        - name: {{ .Values.container.name }}
+          image: "{{ .Values.image.registry }}/{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.container.port }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: spring.profiles.active
+              value: {{ .Values.env.springProfile }}
+            - name: env
+              value: {{ .Values.env.environment }}

@@ -1,0 +1,8 @@
+namespace: codaprod
+image:
+  tag: "prod-BUILD_NUMBER"
+env:
+  - name: spring.profiles.active
+    value: prod
+  - name: env
+    value: prod

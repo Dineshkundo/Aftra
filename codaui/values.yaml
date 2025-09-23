@@ -1,0 +1,27 @@
+replicaCount: 1
+
+image:
+  registry: codaregistry.azurecr.io
+  repository: codaui
+  tag: "ENVIRONMENT-BUILD_NUMBER"
+  pullPolicy: Always
+
+container:
+  name: webapp
+  port: 3000
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 250Mi
+  limits:
+    cpu: 100m
+    memory: 512Mi
+
+service:
+  type: ClusterIP
+  port: 3000
+
+updateStrategy:
+  maxSurge: 1
+  maxUnavailable: 0

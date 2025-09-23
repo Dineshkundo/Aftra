@@ -1,0 +1,11 @@
+namespace: coda-prod
+
+image:
+  registry: codaprodacr.azurecr.io
+  tag: "prod-BUILD_NUMBER"
+
+resources: {}   # prod left empty, can be tuned later if needed for performance testing 
+
+updateStrategy:
+  maxSurge: 0
+  maxUnavailable: 20%

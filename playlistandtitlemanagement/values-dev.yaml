@@ -1,0 +1,12 @@
+image:
+  tag: "dev-BUILD_NUMBER"
+
+env:
+  profile: dev
+  name: dev
+
+namespace: codadev
+
+strategy:
+  maxSurge: 0
+  maxUnavailable: 20%

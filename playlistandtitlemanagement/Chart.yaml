@@ -1,0 +1,6 @@
+apiVersion: v2
+name: playlistandtitlemanagement
+description: Helm chart for deploying playlistandtitlemanagement service
+type: application
+version: 0.1.0
+appVersion: "1.0"

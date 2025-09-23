@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cloudgateway.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: cloudgateway
+spec:
+  type: ClusterIP
+  selector:
+    app: cloudgateway
+  ports:
+    - port: {{ .Values.service.port }}
+      protocol: TCP

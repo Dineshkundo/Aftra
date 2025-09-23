@@ -1,0 +1,6 @@
+apiVersion: v2
+name: fileingestion
+description: Helm chart for File Ingestion Service
+type: application
+version: 1.0.0
+appVersion: "1.0.0"

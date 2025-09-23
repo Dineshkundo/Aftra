@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: fileingestion
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: fileingestion
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: fileingestion
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: {{ .Values.rollingUpdate.maxSurge }}
+      maxUnavailable: {{ .Values.rollingUpdate.maxUnavailable }}
+  template:
+    metadata:
+      labels:
+        app: fileingestion
+    spec:
+      nodeSelector:
+        pool: {{ .Values.nodeSelector.pool }}
+      tolerations:
+        {{- toYaml .Values.tolerations | nindent 8 }}
+      containers:
+        - name: fileingestionapp
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.port }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          env:
+            - name: spring.profiles.active
+              value: {{ .Values.env.springProfile }}
+            - name: env
+              value: {{ .Values.env.environment }}
+            - name: JAVA_OPTS
+              value: {{ .Values.env.javaOpts }}
+ 

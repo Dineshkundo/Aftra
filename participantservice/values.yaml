@@ -1,0 +1,26 @@
+replicaCount: 1
+
+image:
+  repository: codaregistry.azurecr.io/participantservice
+  pullPolicy: Always
+  tag: "latest"   # overridden per environment
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 512Mi
+  limits:
+    cpu: 100m
+    memory: 1Gi
+
+containerPort: 8086
+
+service:
+  type: ClusterIP
+  port: 8086
+
+env:
+  profile: dev   # overridden per environment
+  name: dev
+
+namespace: codadev  # overridden per environment

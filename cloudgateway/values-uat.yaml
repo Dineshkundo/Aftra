@@ -1,0 +1,8 @@
+namespace: codauat
+replicaCount: 1
+env:
+  profile: uat
+  name: uat
+rollingUpdate:
+  maxSurge: 0
+  maxUnavailable: 20%

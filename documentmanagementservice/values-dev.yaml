@@ -1,0 +1,8 @@
+namespace: codadev
+image:
+  tag: "dev-BUILD_NUMBER"
+env:
+  - name: spring.profiles.active
+    value: dev
+  - name: env
+    value: dev

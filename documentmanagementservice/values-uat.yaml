@@ -1,0 +1,8 @@
+namespace: codauat
+image:
+  tag: "uat-BUILD_NUMBER"
+env:
+  - name: spring.profiles.active
+    value: uat
+  - name: env
+    value: uat

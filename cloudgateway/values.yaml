@@ -1,0 +1,26 @@
+namespace: codadev
+replicaCount: 1
+
+image:
+  repository: codaregistry.azurecr.io/cloudgateway
+  tag: "latest"
+  pullPolicy: Always
+
+service:
+  port: 8181
+
+resources:
+  requests:
+    cpu: 10m
+    memory: 200Mi
+  limits:
+    cpu: 100m
+    memory: 768Mi
+
+rollingUpdate:
+  maxSurge: 1
+  maxUnavailable: 0
+
+env:
+  profile: dev
+  name: dev

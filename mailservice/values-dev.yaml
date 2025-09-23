@@ -1,0 +1,9 @@
+replicaCount: 1
+
+image:
+  repository: codaregistry.azurecr.io/mailservice
+  tag: "dev-BUILD_NUMBER"
+
+env:
+  springProfile: dev
+  environment: dev

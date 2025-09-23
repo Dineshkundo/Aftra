@@ -1,0 +1,42 @@
+services:
+  - name: react-webapp
+    host: uat.afmsagaftrafund.org
+    port: 3000
+  - name: serviceregistry
+    host: uatserviceregistry.afmsagaftrafund.org
+    port: 8761
+  - name: participantservice
+    host: uatparticipant.afmsagaftrafund.org
+    port: 8086
+  - name: docmanagement
+    host: uatdocmanagement.afmsagaftrafund.org
+    port: 8082
+  - name: cacheservice
+    host: uatcache.afmsagaftrafund.org
+    port: 8084
+  - name: cloudgateway
+    host: uatcloudgateway.afmsagaftrafund.org
+    port: 8181
+  - name: playlistandtitlemanagement
+    host: uatplaylistandtitman.afmsagaftrafund.org
+    port: 8087
+  - name: searchservice
+    host: uatsearchservice.afmsagaftrafund.org
+    port: 8088
+  - name: mailservice
+    host: uatmailservice.afmsagaftrafund.org
+    port: 8089
+  - name: securityservice
+    host: uatsecurityservice.afmsagaftrafund.org
+    port: 8085
+  - name: fileingestion
+    host: uatfileingestion.afmsagaftrafund.org
+    port: 8083
+  - name: netsuiteintegrationservice
+    host: uatnetsuiteintegration.afmsagaftrafund.org
+    port: 8081
+
+tlsSecret: wildcard-secret
+proxyBodySize: "50m"
+proxyReadTimeout: "60s"
+ingressClassName: nginx

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: participantservice
+description: A Helm chart for deploying participantservice
+type: application
+version: 0.1.0
+appVersion: "1.0"

@@ -1,0 +1,9 @@
+namespace: codaqa
+
+image:
+  registry: codaregistry.azurecr.io
+  tag: "qa-BUILD_NUMBER"
+
+updateStrategy:
+  maxSurge: 0
+  maxUnavailable: 20%

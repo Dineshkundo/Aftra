@@ -1,0 +1,6 @@
+replicaCount: 1
+env:
+  springProfile: uat
+  environment: uat
+image:
+  tag: "uat-BUILD_NUMBER"

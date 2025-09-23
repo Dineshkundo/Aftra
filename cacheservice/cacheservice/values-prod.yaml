@@ -1,0 +1,6 @@
+replicaCount: 1
+env:
+  springProfile: prod
+  environment: prod
+image:
+  tag: "prod-BUILD_NUMBER"

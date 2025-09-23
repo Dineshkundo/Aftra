@@ -1,0 +1,42 @@
+services:
+  - name: react-webapp
+    host: devcoda.afmsagaftrafund.org
+    port: 3000
+  - name: serviceregistry
+    host: devserviceregistry.afmsagaftrafund.org
+    port: 8761
+  - name: participantservice
+    host: devparticipant.afmsagaftrafund.org
+    port: 8086
+  - name: docmanagement
+    host: devdocmanagement.afmsagaftrafund.org
+    port: 8082
+  - name: cacheservice
+    host: devcache.afmsagaftrafund.org
+    port: 8084
+  - name: cloudgateway
+    host: devcloudgateway.afmsagaftrafund.org
+    port: 8181
+  - name: playlistandtitlemanagement
+    host: devplaylistandtitman.afmsagaftrafund.org
+    port: 8087
+  - name: searchservice
+    host: devsearchservice.afmsagaftrafund.org
+    port: 8088
+  - name: mailservice
+    host: devmailservice.afmsagaftrafund.org
+    port: 8089
+  - name: securityservice
+    host: devsecurityservice.afmsagaftrafund.org
+    port: 8085
+  - name: fileingestion
+    host: devfileingestion.afmsagaftrafund.org
+    port: 8083
+  - name: netsuiteintegrationservice
+    host: devnetsuiteintegration.afmsagaftrafund.org
+    port: 8081
+
+tlsSecret: wildcard-secret
+proxyBodySize: "1024m"
+proxyReadTimeout: "60s"
+ingressClassName: nginx

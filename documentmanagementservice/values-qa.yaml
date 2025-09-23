@@ -1,0 +1,8 @@
+namespace: codaqa
+image:
+  tag: "qa-BUILD_NUMBER"
+env:
+  - name: spring.profiles.active
+    value: qa
+  - name: env
+    value: qa

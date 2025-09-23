@@ -1,0 +1,8 @@
+namespace: codadev
+replicaCount: 1
+env:
+  profile: dev
+  name: dev
+rollingUpdate:
+  maxSurge: 1
+  maxUnavailable: 0

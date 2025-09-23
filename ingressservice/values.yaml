@@ -1,0 +1,7 @@
+ingressClassName: nginx
+proxyBodySize: "50m"
+proxyReadTimeout: "60s"
+
+services: []
+
+tlsSecret: wildcard-secret

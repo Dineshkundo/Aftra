@@ -1,0 +1,36 @@
+replicaCount: 1
+
+image:
+  repository: codaregistry.azurecr.io/fileingestionservice
+  tag: "ENVIRONMENT-BUILD_NUMBER"
+  pullPolicy: Always
+
+resources:
+  requests:
+    memory: "24000Mi"
+    cpu: "10000m"
+  limits:
+    memory: "30000Mi"
+    cpu: "12000m"
+
+env:
+  springProfile: dev
+  environment: dev
+  javaOpts: "-Xms4g -Xmx12g"
+
+nodeSelector:
+  pool: D-series
+
+tolerations:
+  - key: "app"
+    operator: "Equal"
+    value: "coda-service"
+    effect: "NoSchedule"
+
+service:
+  type: ClusterIP
+  port: 8083
+
+rollingUpdate:
+  maxSurge: 0
+  maxUnavailable: 20%

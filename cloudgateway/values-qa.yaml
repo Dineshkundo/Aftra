@@ -1,0 +1,8 @@
+namespace: codaqa
+replicaCount: 1
+env:
+  profile: qa
+  name: qa
+rollingUpdate:
+  maxSurge: 0
+  maxUnavailable: 20%

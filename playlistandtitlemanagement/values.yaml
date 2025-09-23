@@ -1,0 +1,31 @@
+replicaCount: 1
+
+image:
+  repository: codaregistry.azurecr.io/playlistandtitlemanagement
+  pullPolicy: Always
+  tag: "latest"
+
+resources:
+  requests:
+    cpu: "10m"
+    memory: "512Mi"
+  limits:
+    cpu: "250m"
+    memory: "2000Mi"
+
+containerPort: 8087
+
+service:
+  type: ClusterIP
+  port: 8087
+
+env:
+  profile: dev
+  name: dev
+
+namespace: codadev
+
+# default rolling update strategy
+strategy:
+  maxSurge: 1
+  maxUnavailable: 0

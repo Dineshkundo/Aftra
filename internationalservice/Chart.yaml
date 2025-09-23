@@ -1,0 +1,6 @@
+apiVersion: v2
+name: internationalservice
+description: Helm chart for International Service (Spring Boot)
+type: application
+version: 0.1.0
+appVersion: "1.0"

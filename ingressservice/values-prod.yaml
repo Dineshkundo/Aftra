@@ -1,0 +1,45 @@
+services:
+  - name: react-webapp
+    host: prodcoda.afmsagaftrafund.org
+    port: 3000
+  - name: serviceregistry
+    host: prodserviceregistry.afmsagaftrafund.org
+    port: 8761
+  - name: participantservice
+    host: prodparticipant.afmsagaftrafund.org
+    port: 8086
+  - name: docmanagement
+    host: proddocmanagement.afmsagaftrafund.org
+    port: 8082
+  - name: cacheservice
+    host: prodcache.afmsagaftrafund.org
+    port: 8084
+  - name: cloudgateway
+    host: prodcloudgateway.afmsagaftrafund.org
+    port: 8181
+  - name: playlistandtitlemanagement
+    host: prodplaylistandtitman.afmsagaftrafund.org
+    port: 8087
+  - name: searchservice
+    host: prodsearchservice.afmsagaftrafund.org
+    port: 8088
+  - name: mailservice
+    host: prodmailservice.afmsagaftrafund.org
+    port: 8089
+  - name: securityservice
+    host: prodsecurityservice.afmsagaftrafund.org
+    port: 8085
+  - name: fileingestion
+    host: prodfileingestion.afmsagaftrafund.org
+    port: 8083
+  - name: netsuiteintegrationservice
+    host: prodnetsuiteintegration.afmsagaftrafund.org
+    port: 8081
+  - name: internationalservice
+    host: prodinternationalservice.afmsagaftrafund.org
+    port: 8090
+
+tlsSecret: wildcard-prod-tls-secret
+proxyBodySize: "1024m"
+proxyReadTimeout: "60s"
+ingressClassName: coda-prod-internal-ingressclass

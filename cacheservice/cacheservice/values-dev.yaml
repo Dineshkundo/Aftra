@@ -1,0 +1,6 @@
+replicaCount: 1
+env:
+  springProfile: dev
+  environment: dev
+image:
+  tag: "dev-BUILD_NUMBER"

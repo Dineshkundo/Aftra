@@ -1,0 +1,24 @@
+replicaCount: 1
+
+image:
+  repository: codaregistry.azurecr.io/securityservice
+  tag: "latest"
+  pullPolicy: Always
+
+resources:
+  requests:
+    cpu: "10m"
+    memory: "512Mi"
+  limits:
+    cpu: "100m"
+    memory: "1024Mi"
+
+service:
+  type: ClusterIP
+  port: 8085
+
+env:
+  profile: default
+  name: default
+
+namespace: default

@@ -1,0 +1,5 @@
+apiVersion: v2
+name: ingressservice
+description: Helm chart for reusable ingress across environments
+version: 0.1.0
+appVersion: "1.0"

@@ -1,0 +1,8 @@
+image:
+  tag: "dev-BUILD_NUMBER"
+
+env:
+  profile: dev
+  name: dev
+
+namespace: codadev

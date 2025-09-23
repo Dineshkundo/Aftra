@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cacheservice.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    run: {{ include "cacheservice.name" . }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      protocol: TCP
+      targetPort: {{ .Values.service.port }}
+  selector:
+    app: {{ include "cacheservice.name" . }}
