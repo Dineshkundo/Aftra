@@ -1,0 +1,174 @@
+pipeline {
+    agent any
+
+    environment {
+        WORKSPACE = 'aftra-dev'
+        REPO = 'approve-pr'
+        BITBUCKET_API = "https://api.bitbucket.org/2.0/repositories/${WORKSPACE}/${REPO}"
+    }
+
+    stages {
+
+        stage('Clone Repo via SSH') {
+            steps {
+                script {
+                    def branchName = env.BRANCH_NAME ?: 'main'
+                    echo "📦 Checking out branch: ${branchName}"
+                    try {
+                        git branch: branchName,
+                            credentialsId: 'bitbucket-ssh',
+                            url: "git@bitbucket.org:${WORKSPACE}/${REPO}.git"
+                    } catch (err) {
+                        error "❌ Git clone failed: ${err}"
+                    }
+                }
+            }
+        }
+
+        stage('Test API Authentication') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'jenkins',
+                                                 usernameVariable: 'BB_USER',
+                                                 passwordVariable: 'BB_TOKEN')]) {
+                    script {
+                        echo "🔑 Testing Bitbucket API authentication..."
+                        def status = sh(
+                            script: """
+                                curl -s -o /dev/null -w "%{http_code}" -u "$BB_USER:$BB_TOKEN" \
+                                ${BITBUCKET_API}/pullrequests?state=OPEN
+                            """,
+                            returnStdout: true
+                        ).trim()
+                        echo "Bitbucket API response code: ${status}"
+                        if (status != '200') {
+                            error "❌ Bitbucket API authentication failed with code ${status}"
+                        } else {
+                            echo "✅ Bitbucket API authentication successful!"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Check Open Pull Requests') {
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'jenkins',
+                                                 usernameVariable: 'BB_USER',
+                                                 passwordVariable: 'BB_TOKEN')]) {
+                    script {
+                        def auth = "Basic " + java.util.Base64.getEncoder()
+                            .encodeToString("${BB_USER}:${BB_TOKEN}".getBytes("UTF-8"))
+
+                        def response = httpRequest(
+                            httpMode: 'GET',
+                            url: "${BITBUCKET_API}/pullrequests?state=OPEN",
+                            customHeaders: [[name: 'Authorization', value: auth]],
+                            validResponseCodes: '200'
+                        )
+
+                        def json = readJSON text: response.content
+                        def prs = json.values
+
+                        if (!prs || prs.isEmpty()) {
+                            echo "✅ No open PRs found."
+                            currentBuild.description = "No PRs open"
+                        } else {
+                            echo "📌 Found ${prs.size()} open PR(s)"
+                            prs.each { pr ->
+                                echo "PR #${pr.id}: ${pr.title} (Source: ${pr.source.branch.name} -> Target: ${pr.destination.branch.name})"
+
+                                emailext(
+                                    subject: "Pull Request #${pr.id} needs approval",
+                                    body: """
+Hello Team Lead,
+
+A new PR requires approval:
+
+PR Title: ${pr.title}
+Source Branch: ${pr.source.branch.name}
+Target Branch: ${pr.destination.branch.name}
+Author: ${pr.author.display_name}
+
+Approve here: ${pr.links.html.href}
+
+-- Jenkins
+""",
+                                    to: "kundodinesh0@gmail.com"
+                                )
+                            }
+                            currentBuild.description = "Approval emails sent for ${prs.size()} PR(s)"
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Approve and Merge PRs') {
+            input {
+                message "Do you want to approve & merge all open PRs?"
+                ok "Yes, merge them"
+            }
+            steps {
+                withCredentials([usernamePassword(credentialsId: 'jenkins',
+                                                 usernameVariable: 'BB_USER',
+                                                 passwordVariable: 'BB_TOKEN')]) {
+                    script {
+                        def auth = "Basic " + java.util.Base64.getEncoder()
+                            .encodeToString("${BB_USER}:${BB_TOKEN}".getBytes("UTF-8"))
+
+                        def response = httpRequest(
+                            httpMode: 'GET',
+                            url: "${BITBUCKET_API}/pullrequests?state=OPEN",
+                            customHeaders: [[name: 'Authorization', value: auth]],
+                            validResponseCodes: '200'
+                        )
+
+                        def json = readJSON text: response.content
+                        def prs = json.values
+
+                        if (!prs || prs.isEmpty()) {
+                            echo "✅ No open PRs to approve/merge."
+                            currentBuild.description = "No PRs to merge"
+                        } else {
+                            prs.each { pr ->
+                                echo "⚡ Approving and merging PR #${pr.id}"
+
+                                // Approve PR
+                                httpRequest(
+                                    httpMode: 'POST',
+                                    url: "${BITBUCKET_API}/pullrequests/${pr.id}/approve",
+                                    customHeaders: [[name: 'Authorization', value: auth]],
+                                    validResponseCodes: '200:204'
+                                )
+
+                                // Merge PR
+                                httpRequest(
+                                    httpMode: 'POST',
+                                    url: "${BITBUCKET_API}/pullrequests/${pr.id}/merge",
+                                    customHeaders: [[name: 'Authorization', value: auth]],
+                                    validResponseCodes: '200:204'
+                                )
+
+                                emailext(
+                                    subject: "✅ PR #${pr.id} Approved & Merged",
+                                    body: """
+Hello Team,
+
+PR #${pr.id} (${pr.title}) has been approved and merged.
+
+Source: ${pr.source.branch.name}
+Target: ${pr.destination.branch.name}
+
+-- Jenkins
+""",
+                                    to: "kundodinesh0@gmail.com"
+                                )
+                            }
+                            currentBuild.description = "Approved & merged ${prs.size()} PR(s)"
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
