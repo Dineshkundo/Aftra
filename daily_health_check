@@ -1,0 +1,81 @@
+#!/bin/bash
+
+NAMESPACE="codadev"
+
+CRITICAL_SERVICES=(
+  docker
+  containerd
+  jenkins
+  nginx
+  prometheus
+  grafana-server
+  postgresql
+)
+
+echo "========================================"
+echo " DAILY SERVER & K8S HEALTH CHECK"
+echo " Date: $(date)"
+echo "========================================"
+
+# ------------------------------
+# 1. Kubernetes Nodes
+# ------------------------------
+echo -e "\n[K8S] Node Status"
+kubectl get nodes
+
+NOT_READY=$(kubectl get nodes --no-headers | awk '$2!="Ready"{print $1}')
+if [ -n "$NOT_READY" ]; then
+  echo -e "\nWARNING: NotReady nodes detected:"
+  echo "$NOT_READY"
+else
+  echo "All nodes are Ready"
+fi
+
+# ------------------------------
+# 2. Pods Health
+# ------------------------------
+echo -e "\n[K8S] Pod Status (Non-Running)"
+NON_RUNNING_PODS=$(kubectl get pods -n "$NAMESPACE" --no-headers | awk '$3!="Running"{print}')
+
+if [ -n "$NON_RUNNING_PODS" ]; then
+  echo "$NON_RUNNING_PODS"
+else
+  echo "All pods are Running"
+fi
+
+# ------------------------------
+# ------------------------------
+# 3. Deployment Health
+# ------------------------------
+echo -e "\n[K8S] Deployment Health"
+kubectl get deployment -n "$NAMESPACE"
+
+DEPLOY_ISSUE=$(kubectl get deployment -n "$NAMESPACE" --no-headers | \
+awk '{
+  split($2, a, "/");
+  if ($4 < a[1]) print $1
+}')
+
+if [ -n "$DEPLOY_ISSUE" ]; then
+  echo -e "\nWARNING: Deployment replica mismatch:"
+  echo "$DEPLOY_ISSUE"
+else
+  echo "All deployments are healthy"
+fi
+
+# ------------------------------
+# 4. System Services
+# ------------------------------
+echo -e "\n[OS] Critical Services Status"
+for service in "${CRITICAL_SERVICES[@]}"; do
+  if systemctl is-active --quiet "$service"; then
+    echo "OK    - $service"
+  else
+    echo "ALERT - $service NOT running"
+  fi
+done
+
+# ------------------------------
+# END
+# ------------------------------
+echo -e "\nHealth check completed."
