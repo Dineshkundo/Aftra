@@ -1,0 +1,316 @@
+
+---
+
+# 📄 SSL Certificate Renewal & Deployment (Kubernetes + NGINX Ingress)
+
+---
+
+## 🧭 Overview
+
+This project documents the **end-to-end SSL certificate renewal and deployment** process for:
+
+* `devcoda.afmsagaftrafund.org`
+* `qacoda.afmsagaftrafund.org`
+* `uat.afmsagaftrafund.org`
+* `afmsagaftrafund.org`
+
+---
+
+## 🏗️ Architecture
+
+### 🔐 TLS Flow
+
+```
+User (Browser)
+      ↓
+Public DNS
+      ↓
+NGINX Ingress Controller (TLS TERMINATION)
+      ↓
+Kubernetes Service
+      ↓
+Application Pods
+```
+
+---
+
+## 🧠 Key Insight
+
+> SSL is NOT handled by VM NGINX
+> SSL is handled at **Kubernetes Ingress via TLS Secret**
+
+---
+
+## 🌐 Architecture Diagram
+
+![Kubernetes TLS Flow](https://kubernetes.github.io/ingress-nginx/images/architecture.png)
+
+---
+
+## 📦 Certificate Files
+
+### 📥 From Certificate Provider (GoDaddy)
+
+```
+f68c55dd67ffaf8.crt     → Primary certificate
+gd_bundle-g2.crt        → Intermediate certificate
+private.key             → Private key
+```
+
+---
+
+## 🔗 Fullchain Creation (MANDATORY)
+
+```bash
+cat f68c55dd67ffaf8.crt gd_bundle-g2.crt > fullchain.crt
+```
+
+✔ Ensures:
+
+* Complete trust chain
+* No browser warnings
+
+---
+
+## 🚀 Upload Certificate to Server
+
+### Method 1: SCP
+
+```bash
+scp -i key.pem cert.zip user@server:/home/jenkinsadmin/
+```
+
+### Issue Faced
+
+* Slow transfer
+
+### Solution
+
+* Upload ZIP → unzip on server
+
+---
+
+## 🔐 Kubernetes TLS Secret
+
+### Secret Structure
+
+```yaml
+type: kubernetes.io/tls
+data:
+  tls.crt  # Certificate (base64)
+  tls.key  # Private key (base64)
+```
+
+---
+
+## ⚙️ Implementation Steps
+
+---
+
+### 🟢 Step 1: Verify Existing Certificate
+
+```bash
+kubectl get secret wildcard-secret -n codadev \
+-o jsonpath="{.data.tls\.crt}" | base64 -d | openssl x509 -noout -dates
+```
+
+---
+
+### 🟢 Step 2: Update TLS Secret
+
+```bash
+kubectl create secret tls wildcard-secret \
+  --cert=/home/jenkinsadmin/aftra-new-certificates-2026/fullchain.crt \
+  --key=/home/jenkinsadmin/aftra-certificates-2026/_.afmsagaftrafund.org.private.key \
+  -n <namespace> \
+  --dry-run=client -o yaml | kubectl apply -f -
+```
+
+---
+
+### 🟢 Step 3: Verify Updated Secret
+
+```bash
+kubectl get secret wildcard-secret -n <namespace> \
+-o jsonpath="{.data.tls\.crt}" | base64 -d | openssl x509 -noout -dates
+```
+
+---
+
+### 🟢 Step 4: Validate via Domain
+
+```bash
+openssl s_client -connect domain:443 | openssl x509 -noout -dates
+```
+
+---
+
+## 🌍 Environments
+
+| Environment | Namespace | Status    |
+| ----------- | --------- | --------- |
+| DEV         | codadev   | ✅ Updated |
+| QA          | codaqa    | ✅ Updated |
+| UAT         | codauat   | ✅ Updated |
+| PROD        | Public    | ✅ Updated |
+
+---
+
+## ⚠️ Issues Faced & Fixes
+
+---
+
+### ❌ Issue 1: Certificate not reflecting
+
+**Cause:**
+
+* Updated VM NGINX instead of Kubernetes Ingress
+
+**Fix:**
+
+* Identified TLS termination at ingress level
+
+---
+
+### ❌ Issue 2: Wrong server debugging
+
+```
+localhost → NEW cert
+domain → OLD cert
+```
+
+**Cause:**
+
+* DNS pointing to different endpoint
+
+---
+
+### ❌ Issue 3: File not found
+
+```
+fullchain.crt not found
+```
+
+**Fix:**
+
+* Recreated fullchain
+* Used absolute path
+
+---
+
+### ❌ Issue 4: Secret not updated
+
+**Cause:**
+
+* Updated wrong namespace
+
+**Fix:**
+
+* Updated `wildcard-secret` in:
+
+  * codadev
+  * codaqa
+  * codauat
+
+---
+
+### ❌ Issue 5: Certificate chain error
+
+```
+unable to verify first certificate
+```
+
+**Cause:**
+
+* Missing intermediate certificate
+
+**Fix:**
+
+* Used fullchain
+
+---
+
+### ❌ Issue 6: ~ path issue
+
+**Cause:**
+
+* kubectl doesn't expand `~`
+
+**Fix:**
+
+* Used full path
+
+---
+
+## 🧠 Key Learnings
+
+---
+
+### 🔥 TLS Termination Awareness
+
+```
+VM ❌
+Ingress ✔
+Load Balancer ✔
+```
+
+---
+
+### 🔥 Secret is Source of Truth
+
+```
+Kubernetes Secret → Ingress → SSL
+```
+
+---
+
+### 🔥 Validation Levels
+
+| Level    | Command   |
+| -------- | --------- |
+| Secret   | kubectl   |
+| Internal | localhost |
+| Public   | domain    |
+
+---
+
+## 🚀 Final Validation
+
+```
+DEV → Oct 24 2026 ✅
+QA  → Oct 24 2026 ✅
+UAT → Oct 24 2026 ✅
+```
+
+---
+
+## 🏁 Outcome
+
+* ✅ Zero downtime deployment
+* ✅ Secure SSL across all environments
+* ✅ Correct TLS implementation at ingress
+* ✅ Production verified
+
+---
+
+## 🎯 Final Statement
+
+> SSL certificate renewal was successfully implemented at Kubernetes ingress level using TLS secrets, ensuring secure communication without downtime.
+
+---
+
+## 📎 Reference
+
+Your original working draft is here:
+
+
+---
+
+# 🚀 Bonus (for your resume)
+
+You can write:
+
+> Implemented zero-downtime SSL certificate renewal in Kubernetes using NGINX Ingress and TLS secrets across multiple environments (Dev, QA, UAT), resolving real-world production misrouting and TLS termination issues.
+
+---
+
